@@ -1,0 +1,31 @@
+function createOnEditTrigger() {
+  var ss = SpreadsheetApp.getActive();
+  ScriptApp.newTrigger('sendNotificationEmail')
+    .forSpreadsheet(ss)
+    .onEdit()
+    .create();
+}
+
+function sendNotificationEmail(e) {
+  var sheet = e.range.getSheet();
+  var rowIndex = e.range.getRow();
+  var colIndex = e.range.getColumn();
+
+  var subject = 'Test Notification';
+  var clientColumn = 1;
+  var crewColumn = 2;
+  var stageColumn = 4;
+  var emailColumn = 3;
+
+  if (colIndex === stageColumn && sheet.getRange(rowIndex, stageColumn).getValue() === 'Send') {
+    var email = sheet.getRange(rowIndex, emailColumn).getValue().toString().trim();
+    var clientName = sheet.getRange(rowIndex, clientColumn).getValue().toString().trim();
+    var crewName = sheet.getRange(rowIndex, crewColumn).getValue().toString().trim();
+
+    if (email !== '') {
+      var message = 'Hello ' + clientName +',\n\nPlease contact XYZ to learn more about ' + crewName + ' Collaboration Crew opportunity.\n\nBest regards,\
+      XYZ';
+      MailApp.sendEmail(email, subject, message);
+    }
+  }
+}
