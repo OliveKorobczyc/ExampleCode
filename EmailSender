@@ -1,0 +1,86 @@
+function onInstall(e) {
+  onOpen(e);
+}
+
+function onOpen(e) {
+  var ui = SpreadsheetApp.getUi();
+  // Create custom menu
+  ui.createMenu('Email Sender')
+    .addItem('Send Email', 'selectRowAndSendEmail')
+    .addToUi();
+}
+
+function selectRowAndSendEmail() {
+  // Prompt the user to select a row
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var selectedRange = sheet.getActiveRange();
+  
+  if (selectedRange.getNumRows() === 1) {
+    var selectedRow = selectedRange.getRow();
+    sendEmail(selectedRow);
+  } else {
+    SpreadsheetApp.getUi().alert('Please select a single row.');
+  }
+}
+
+function sendEmail(selectedRow) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+
+  // Column names based on your spreadsheet structure
+  var COL_COLLAB_CREW = "Collaboration Crew"; // Collaboration Crew column
+  var COL_ACCOUNT_NAME = "Account Name"; // Account Name column
+  var COL_CSM = "CSM"; // CSM column
+  var COL_CSM_EMAIL = "CSM Email"; // CSM Email column
+  var COL_EMAIL = "Email"; // AAE Requestor email column
+
+  // Get data for the selected row
+  var collaborationCrew = sheet.getRange(selectedRow, getColumnByName(sheet, COL_COLLAB_CREW)).getValue();
+  var accountName = sheet.getRange(selectedRow, getColumnByName(sheet, COL_ACCOUNT_NAME)).getValue();
+  var csm = sheet.getRange(selectedRow, getColumnByName(sheet, COL_CSM)).getValue();
+  var csmEmail = sheet.getRange(selectedRow, getColumnByName(sheet, COL_CSM_EMAIL)).getValue();
+  var email = sheet.getRange(selectedRow, getColumnByName(sheet, COL_EMAIL)).getValue();
+
+  Logger.log('Collaboration Crew: ' + collaborationCrew);
+  Logger.log('Account Name: ' + accountName);
+  Logger.log('CSM: ' + csm);
+  Logger.log('CSM Email: ' + csmEmail);
+  Logger.log('AAE Requestor email: ' + email);
+
+  // Generic email message
+  var emailBody = "<div style='font-weight: bold;'>Hello " + accountName + ",</div><br><br>" +
+    "<div>We have important information to share with you regarding the collaboration.</div>" +
+    "<div>If you have any questions, contact your CSM <span style='font-weight: bold;'>" + csm + "</span> (" + csmEmail + ").</div><br>" +
+    "<div>Thank you!</div><br>" +
+    "<div><img src='https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Workday_logo.svg/2560px-Workday_logo.svg.png' alt='Company Logo' style='width: 160px; height: 110px;'></div>";
+
+  // HTML form for pop-up without a button
+  var htmlOutput = HtmlService.createHtmlOutput('<div style="text-align: center; white-space: pre-wrap;">' +
+    emailBody + '</div>')
+    .setTitle('Email Preview')
+    .setWidth(400)
+    .setHeight(400);
+
+  // Show the pop-up
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Email Preview');
+
+  // Send email using the MailApp service after the pop-up is closed
+  MailApp.sendEmail({
+    to: email,
+    subject: 'Generic Email Subject',
+    htmlBody: emailBody
+  });
+
+  // Log the success
+  Logger.log('Email sent successfully to ' + email);
+}
+
+// Helper function to get column number by name
+function getColumnByName(sheet, columnName) {
+  var headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  for (var i = 0; i < headerRow.length; i++) {
+    if (headerRow[i] === columnName) {
+      return i + 1; // Adding 1 as column indices start from 1 in Google Sheets
+    }
+  }
+  throw new Error("Column '" + columnName + "' not found in the sheet.");
+}
