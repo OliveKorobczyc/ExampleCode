@@ -1,0 +1,92 @@
+// Configuration
+var CONFIG = {
+  menuName: 'Crews Maker App',
+  importMenuItem: 'Import Data from Smartsheet',
+  smartsheetApiKey: '75f5tEqg66vEILoeeMfVPLNJ8FT3WhvwbmBJk',
+  smartsheetSheetId: '8211426457216900'
+};
+
+// Function to run on installation
+function onInstall(e) {
+  onOpen(e);
+}
+
+// Function to run on opening the spreadsheet
+function onOpen(e) {
+  var ui = e ? e.authMode : ScriptApp.AuthMode.NONE;
+  if (ui != ScriptApp.AuthMode.NONE) {
+    SpreadsheetApp.getUi()
+      .createMenu(CONFIG.menuName)
+      .addItem(CONFIG.importMenuItem, 'importDataFromSmartsheetInRange')
+      .addToUi();
+  }
+}
+
+// Function to prompt the user to enter the start and end row numbers
+function importDataFromSmartsheetInRange() {
+  // Prompt the user to enter the start and end row numbers
+  var startRowNumber = Browser.inputBox('Enter Start Row Number', 'Please enter the start row number:', Browser.Buttons.OK_CANCEL);
+  var endRowNumber = Browser.inputBox('Enter End Row Number', 'Please enter the end row number:', Browser.Buttons.OK_CANCEL);
+
+  // Check if the user clicked OK for both inputs
+  if (startRowNumber === null || endRowNumber === null) {
+    Logger.log('User canceled the input.');
+    return;
+  }
+
+  // Parse the entered row numbers
+  var startRow = parseInt(startRowNumber);
+  var endRow = parseInt(endRowNumber);
+
+  // Check if the entered row numbers are valid
+  if (!isNaN(startRow) && !isNaN(endRow) && startRow > 1 && endRow >= startRow) {
+    importDataFromSmartsheet(startRow, endRow);
+  } else {
+    Logger.log('Invalid row numbers');
+  }
+}
+
+// Function to import data from Smartsheet
+function importDataFromSmartsheet(startRow, endRow) {
+  try {
+    // Fetch data from Smartsheet
+    var response = UrlFetchApp.fetch('https://api.smartsheet.com/2.0/sheets/' + CONFIG.smartsheetSheetId, {
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.smartsheetApiKey
+      }
+    });
+
+    // Parse the response JSON
+    var responseData = JSON.parse(response.getContentText());
+
+    // Access the data you need from the responseData object
+    var columns = responseData.columns;
+    var rows = responseData.rows;
+
+    // Clear existing data in the active sheet
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    sheet.clear();
+
+    // Write selected rows to the sheet
+    for (var i = startRow - 1; i < endRow; i++) {
+      if (i >= 0 && i < rows.length) {
+        var rowData = columns.map(function (column) {
+          var cell = rows[i].cells.find(function (cell) {
+            return cell.columnId === column.id;
+          });
+
+          return cell ? cell.value : null;
+        });
+
+        // Append row only if it contains data
+        if (rowData.some(function (value) { return value !== null && value !== ''; })) {
+          sheet.appendRow(rowData);
+        }
+      }
+    }
+
+    Logger.log('Import successful');
+  } catch (e) {
+    Logger.log('Error during import: ' + e.toString());
+  }
+}
